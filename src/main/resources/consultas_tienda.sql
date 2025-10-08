@@ -27,6 +27,7 @@
 -- 14. Lista los productos que tienen un precio mayor o igual a 400€.
     SELECT nombre FROM producto WHERE precio >= 400;
 -- 15. Lista todos los productos que tengan un precio entre 80€ y 300€.
+    SELECT nombre FROM producto WHERE precio BETWEEN 80 AND 300;
 -- 16. Lista todos los productos que tengan un precio mayor que 200€ y que el código de fabricante sea igual a 6.
 -- 17. Lista todos los productos donde el código de fabricante sea 1, 3 o 5 utilizando un Set de codigos de fabricantes para filtrar.
 -- 18. Lista el nombre y el precio de los productos en céntimos.

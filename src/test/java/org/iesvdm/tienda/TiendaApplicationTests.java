@@ -1,5 +1,6 @@
 package org.iesvdm.tienda;
 
+import org.aspectj.weaver.World;
 import org.iesvdm.tienda.modelo.Fabricante;
 import org.iesvdm.tienda.modelo.Producto;
 import org.iesvdm.tienda.repository.FabricanteRepository;
@@ -12,10 +13,14 @@ import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static java.util.Comparator.comparing;
 import static java.util.Comparator.reverseOrder;
+import static java.util.spi.ToolProvider.findFirst;
 
 @SpringBootTest
 class TiendaApplicationTests {
@@ -138,7 +143,7 @@ class TiendaApplicationTests {
                 .map(f -> f.getNombre() )
                 .toList();
         listaOrdenada.forEach(x-> System.out.println(x));
-        
+
 		// TODO
 	}
 
@@ -174,7 +179,7 @@ class TiendaApplicationTests {
 				.toList();
 		listaCincoPrimeros.forEach(x-> System.out.println(x));
 		Assertions.assertEquals(5, listaCincoPrimeros.size());
-                
+
 		// TODO
 	}
 
@@ -210,7 +215,7 @@ class TiendaApplicationTests {
                 .toList();
         listaBarato.forEach(x-> System.out.println(x));
         Assertions.assertEquals(1, listaBarato.size());
-                
+
 		// TODO
 	}
 
@@ -221,20 +226,38 @@ class TiendaApplicationTests {
 	void test11() {
 		var listProds = prodRepo.findAll();
 
-		 var listaCaro = listProds.stream()
-				.sorted(comparing(Producto::getPrecio, reverseOrder()))
-				.limit(1)
-				.map(p -> p.getNombre() + " " + p.getPrecio())
-				.toList();
-		listaCaro.forEach(x-> System.out.println(x));
-		Assertions.assertEquals(1, listaCaro.size());
+        //Test con iPresent
+        Optional<Producto> prodOpt = listProds.stream()
+                .sorted(
+                        comparing(producto -> producto.getPrecio(), reverseOrder())
+                ).findFirst();
+
+        if (prodOpt.isPresent()) {
+            Producto p = prodOpt.get();
+            System.out.println(p.getNombre() + " " + p.getPrecio());
+        }
+
+        prodOpt.ifPresent(x -> System.out.println(x.getNombre() + " " +  x.getPrecio()));
+
+        prodOpt.ifPresentOrElse(x -> System.out.println(x.getNombre() + " " + x.getPrecio())
+        , () -> System.out.println("Sin resultado"));
+
+        //Test con lambda normal
+
+//		 var listaCaro = listProds.stream()
+//				.sorted(comparing(Producto::getPrecio, reverseOrder()))
+//				.limit(1)
+//				.map(p -> p.getNombre() + " " + p.getPrecio())
+//				.toList();
+//		listaCaro.forEach(x-> System.out.println(x));
+//		Assertions.assertEquals(1, listaCaro.size());
 		// TODO
 	}
 
 	/**
 	 * 12. Lista el nombre de todos los productos del fabricante cuyo código de
 	 * fabricante es igual a 2.
-	 * 
+	 *
 	 */
 	@Test
 	void test12() {
@@ -307,6 +330,15 @@ class TiendaApplicationTests {
 	@Test
 	void test16() {
 		var listProds = prodRepo.findAll();
+
+        var listaPrecioMayor = listProds.stream()
+                .filter(p -> p.getPrecio() > 200 && p.getFabricante().getCodigo() == 6)
+                .map(p -> p.getNombre() + " " + p.getPrecio())
+                .toList();
+
+        listaPrecioMayor.forEach(x-> System.out.println(x));
+        //Assertions.assertEquals(6, listaPrecioMayor.size());
+
 		// TODO
 	}
 
@@ -317,6 +349,19 @@ class TiendaApplicationTests {
 	@Test
 	void test17() {
 		var listProds = prodRepo.findAll();
+
+        var codigos = Set.of(1, 3, 5);
+
+        var listaCodigos = listProds.stream()
+                .filter(p -> codigos.contains(p.getFabricante().getCodigo()))
+                .map(p -> p.getNombre() + " " + p.getPrecio())
+                .toList();
+        listaCodigos.forEach(x-> System.out.println(x));
+        Assertions.assertEquals(4, listaCodigos.size());
+
+
+
+
 		// TODO
 	}
 
@@ -419,14 +464,14 @@ class TiendaApplicationTests {
 	 * máximas de los diferentes campos a presentar y compensa mediante la inclusión
 	 * de espacios en blanco.
 	 * La salida debe quedar tabulada como sigue:
-	 * 
+	 *
 	 * Producto Precio Fabricante
 	 * -----------------------------------------------------
 	 * GeForce GTX 1080 Xtreme|611.5500000000001 |Crucial
 	 * Portátil Yoga 520 |452.79 |Lenovo
 	 * Portátil Ideapd 320 |359.64000000000004|Lenovo
 	 * Monitor 27 LED Full HD |199.25190000000003|Asus
-	 * 
+	 *
 	 */
 	@Test
 	void test27() {
@@ -442,53 +487,53 @@ class TiendaApplicationTests {
 	 * SÓLO SE PUEDEN UTILIZAR STREAM, NO PUEDE HABER BUCLES
 	 * La salida debe queda como sigue:
 	 * Fabricante: Asus
-	 * 
+	 *
 	 * Productos:
 	 * Monitor 27 LED Full HD
 	 * Monitor 24 LED Full HD
-	 * 
+	 *
 	 * Fabricante: Lenovo
-	 * 
+	 *
 	 * Productos:
 	 * Portátil Ideapd 320
 	 * Portátil Yoga 520
-	 * 
+	 *
 	 * Fabricante: Hewlett-Packard
-	 * 
+	 *
 	 * Productos:
 	 * Impresora HP Deskjet 3720
 	 * Impresora HP Laserjet Pro M26nw
-	 * 
+	 *
 	 * Fabricante: Samsung
-	 * 
+	 *
 	 * Productos:
 	 * Disco SSD 1 TB
-	 * 
+	 *
 	 * Fabricante: Seagate
-	 * 
+	 *
 	 * Productos:
 	 * Disco duro SATA3 1TB
-	 * 
+	 *
 	 * Fabricante: Crucial
-	 * 
+	 *
 	 * Productos:
 	 * GeForce GTX 1080 Xtreme
 	 * Memoria RAM DDR4 8GB
-	 * 
+	 *
 	 * Fabricante: Gigabyte
-	 * 
+	 *
 	 * Productos:
 	 * GeForce GTX 1050Ti
-	 * 
+	 *
 	 * Fabricante: Huawei
-	 * 
+	 *
 	 * Productos:
-	 * 
-	 * 
+	 *
+	 *
 	 * Fabricante: Xiaomi
-	 * 
+	 *
 	 * Productos:
-	 * 
+	 *
 	 */
 	@Test
 	void test28() {
@@ -594,7 +639,7 @@ class TiendaApplicationTests {
 	 * Ordene el resultado descendentemente por el número de productos. Utiliza
 	 * String.format para la alineación de los nombres y las cantidades.
 	 * La salida debe queda como sigue:
-	 * 
+	 *
 	 * Fabricante #Productos
 	 * -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 	 * Asus 2
@@ -606,7 +651,7 @@ class TiendaApplicationTests {
 	 * Gigabyte 1
 	 * Huawei 0
 	 * Xiaomi 0
-	 * 
+	 *
 	 */
 	@Test
 	void test38() {
@@ -707,5 +752,4 @@ class TiendaApplicationTests {
 		var listFabs = fabRepo.findAll();
 		// TODO
 	}
-
 }
