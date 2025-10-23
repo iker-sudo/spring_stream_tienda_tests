@@ -1,6 +1,5 @@
 package org.iesvdm.tienda;
 
-import com.jayway.jsonpath.internal.function.numeric.Max;
 import org.iesvdm.tienda.modelo.Fabricante;
 import org.iesvdm.tienda.modelo.Producto;
 import org.iesvdm.tienda.repository.FabricanteRepository;
@@ -9,15 +8,15 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Arrays;
+import java.util.DoubleSummaryStatistics;
 import java.util.List;
 
-import static java.util.Comparator.comparing;
-import static java.util.Comparator.reverseOrder;
+import static java.util.Arrays.stream;
+import static java.util.Comparator.*;
 import static java.util.stream.Collectors.joining;
 
 @SpringBootTest
@@ -807,6 +806,7 @@ class TiendaApplicationTests {
     void test38() {
         var listFabs = fabRepo.findAll();
         // TODO
+
     }
 
     /**
@@ -820,6 +820,7 @@ class TiendaApplicationTests {
     @Test
     void test39() {
         var listFabs = fabRepo.findAll();
+
         // TODO
     }
 
@@ -831,19 +832,66 @@ class TiendaApplicationTests {
      */
     @Test
     void test40() {
-        var listFabs = fabRepo.findAll();
-        // TODO
-    }
+            var listFabs = fabRepo.findAll();
 
-    /**
-     * 41. Devuelve un listado con los nombres de los fabricantes que tienen 2 o más
-     * productos.
-     */
-    @Test
-    void test41() {
-        var listFabs = fabRepo.findAll();
+            var fabricantesFiltrados = listFabs.stream()
+                    .map(fabricante -> {
+                        var estadisticas = fabricante.getProductos()
+                                .stream()
+                                .mapToDouble(Producto::getPrecio)
+                                .summaryStatistics();
+
+                        return new Object[]{fabricante.getCodigo(), estadisticas};
+                    })
+                    .filter(obj -> {
+                        var stats = (DoubleSummaryStatistics) obj[1];
+                        return stats.getAverage() > 200;
+                    })
+                    .toList();
+
+            fabricantesFiltrados.forEach(obj -> {
+                int codigo = (int) obj[0];
+                var stats = (DoubleSummaryStatistics) obj[1];
+                System.out.println("Fabricante código: " + codigo);
+                System.out.println("  Precio máximo: " + stats.getMax());
+                System.out.println("  Precio mínimo: " + stats.getMin());
+                System.out.println("  Precio medio: " + stats.getAverage());
+                System.out.println("  Total productos: " + stats.getCount());
+                System.out.println("------------------------------------");
+            });
+
+            // Assertions (puedes ajustar los valores si sabes los datos exactos del repositorio)
+            Assertions.assertFalse(fabricantesFiltrados.isEmpty(),
+                    "Debe haber al menos un fabricante con precio medio > 200€");
+
+            Assertions.assertTrue(
+                    fabricantesFiltrados.stream()
+                            .allMatch(obj -> ((DoubleSummaryStatistics) obj[1]).getAverage() > 200),
+                    "Todos los fabricantes filtrados deben tener media > 200€"
+            );
+        }
+
+
         // TODO
-    }
+
+
+ /**
+      * 41. Devuelve un listado con los nombres de los fabricantes que tienen 2 o más
+      * productos.
+      */
+     @Test
+     void test41() {
+         var listFabs = fabRepo.findAll();
+
+         var fabricantesConDosOMas = listFabs.stream()
+                 .filter(f -> f.getProductos() != null && f.getProductos().size() >= 2)
+                 .map(Fabricante::getNombre)
+                 .toList();
+
+         fabricantesConDosOMas.forEach(System.out::println);
+
+         Assertions.assertEquals(4, fabricantesConDosOMas.size());
+     }
 
     /**
      * 42. Devuelve un listado con los nombres de los fabricantes y el número de
@@ -853,7 +901,20 @@ class TiendaApplicationTests {
     @Test
     void test42() {
         var listFabs = fabRepo.findAll();
-        // TODO
+
+        var resultado = listFabs.stream()
+                .map(f -> new java.util.AbstractMap.SimpleEntry<>(
+                        f.getNombre(),
+                        f.getProductos() == null ? 0L
+                                : f.getProductos().stream().filter(p -> p.getPrecio() >= 220).count()
+                ))
+                .sorted(java.util.Comparator.comparingLong((java.util.AbstractMap.SimpleEntry<String, Long> e) -> e.getValue()).reversed())
+                .map(e -> e.getKey() + " " + e.getValue())
+                .toList();
+
+        resultado.forEach(System.out::println);
+
+        Assertions.assertEquals(listFabs.size(), resultado.size());
     }
 
     /**
@@ -863,6 +924,13 @@ class TiendaApplicationTests {
     @Test
     void test43() {
         var listFabs = fabRepo.findAll();
+        var listaFabs = listFabs.stream()
+                .filter(f -> f.getProductos() != null &&
+                        f.getProductos().stream().mapToDouble(Producto::getPrecio).sum() > 1000)
+                .map(Fabricante::getNombre)
+                .toList();
+        listaFabs.forEach(x -> System.out.println(x));
+        Assertions.assertEquals(3, listaFabs.size());
         // TODO
     }
 
@@ -874,6 +942,13 @@ class TiendaApplicationTests {
     @Test
     void test44() {
         var listFabs = fabRepo.findAll();
+        var listaFabs = listFabs.stream()
+                .filter(f -> f.getProductos() != null &&
+                        f.getProductos().stream().mapToDouble(Producto::getPrecio).sum() > 1000)
+                .sorted(comparingDouble(f -> f.getProductos().stream().mapToDouble(Producto::getPrecio).sum()))
+                .map(Fabricante::getNombre)
+                .toList();
+        listaFabs.forEach(x -> System.out.println(x));
         // TODO
     }
 
@@ -888,7 +963,16 @@ class TiendaApplicationTests {
     @Test
     void test45() {
         var listFabs = fabRepo.findAll();
-        var listaNueva =
+        var listaProductosMasCaros = listFabs.stream()
+                .filter(f -> f.getProductos() != null && !f.getProductos().isEmpty())
+                .map(f -> {
+                    Producto productoMasCaro = f.getProductos().stream()
+                            .max(comparingDouble(Producto::getPrecio))
+                            .orElse(null);
+                    return new Object[]{productoMasCaro.getNombre(), productoMasCaro.getPrecio(), f.getNombre()};
+                })
+                .sorted(comparing(o -> (String) o[2]))
+                .toList();
 
         // TODO
     }
@@ -902,13 +986,13 @@ class TiendaApplicationTests {
     @Test
     void test46() {
         var listFabs = fabRepo.findAll();
-        double mediaProductos = listFabs.stream().flatMap(fabricante ->  fabricante.getProductos().stream())
-                                .mapToDouble(p -> p.getPrecio()).average()
-                                .orElse(0.0);
-        double sumaTotal = listFabs.stream().flatMap(fabricante ->  fabricante.getProductos().stream())
+        double mediaProductos = listFabs.stream().flatMap(fabricante -> fabricante.getProductos().stream())
+                .mapToDouble(p -> p.getPrecio()).average()
+                .orElse(0.0);
+        double sumaTotal = listFabs.stream().flatMap(fabricante -> fabricante.getProductos().stream())
                 .mapToDouble(p -> p.getPrecio()).reduce(0.0, (a, b) -> a + b);
 
-        long totalProductos = listFabs.stream().flatMap(fabricante ->  fabricante.getProductos().stream())
+        long totalProductos = listFabs.stream().flatMap(fabricante -> fabricante.getProductos().stream())
                 .count();
 
         double media = sumaTotal / totalProductos;
@@ -925,7 +1009,7 @@ class TiendaApplicationTests {
 
         String[] words = new String[]{"Hello", "World"};
 
-        List<String[]> list = Arrays.stream(words)
+        List<String[]> list = stream(words)
                 .map(word -> word.split(""))
 
                 .peek(strings -> {
@@ -950,9 +1034,9 @@ class TiendaApplicationTests {
 
         String[] words = new String[]{"Hello", "World"};
 
-        var list = Arrays.stream(words)
+        var list = stream(words)
                 .map(word -> word.split(""))
-                .map(strings -> Arrays.stream(strings))
+                .map(strings -> stream(strings))
 
                 .peek(strings -> {
                             System.out.println(strings);
@@ -977,9 +1061,9 @@ class TiendaApplicationTests {
 
         String[] words = new String[]{"Hello", "World"};
 
-        var list = Arrays.stream(words)
+        var list = stream(words)
                 .map(word -> word.split(""))
-                .flatMap(strings -> Arrays.stream(strings))
+                .flatMap(strings -> stream(strings))
 
                 //.peek(strings ->   System.out.println(strings) )
 
@@ -999,21 +1083,21 @@ class TiendaApplicationTests {
 
         String[] words = new String[]{"Hello", "World"};
 
-        Assertions.assertTrue(Arrays.stream(words)
+        Assertions.assertTrue(stream(words)
                 .map(word -> word.split(""))
-                .flatMap(strings -> Arrays.stream(strings))
+                .flatMap(strings -> stream(strings))
                 .distinct()
                 .anyMatch(s -> "l".equals(s)));
 
-        Assertions.assertTrue(Arrays.stream(words)
+        Assertions.assertTrue(stream(words)
                 .map(word -> word.split(""))
-                .flatMap(strings -> Arrays.stream(strings))
+                .flatMap(strings -> stream(strings))
                 .distinct()
                 .noneMatch(s -> "z".equals(s)));
 
-        Assertions.assertTrue(Arrays.stream(words)
+        Assertions.assertTrue(stream(words)
                 .map(word -> word.split(""))
-                .flatMap(strings -> Arrays.stream(strings))
+                .flatMap(strings -> stream(strings))
                 .distinct()
                 .allMatch(s -> s.length() == 1));
 
